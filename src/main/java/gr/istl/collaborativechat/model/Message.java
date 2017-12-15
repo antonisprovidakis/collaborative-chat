@@ -6,12 +6,19 @@ package gr.istl.collaborativechat.model;
  */
 public class Message {
 
-    public String message;
-    public String author;
+    private final String message;
+    private final String author;
 
     public Message(String message, String author) {
         this.message = message;
         this.author = author;
     }
 
+    public String getMessage() {
+        return message;
+    }
+
+    public String getAuthor() {
+        return author;
+    }
 }

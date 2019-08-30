@@ -220,6 +220,7 @@ public class ChatWindow extends JFrame {
             if (textFieldInput.getText().trim().length() > 0) {
                 sendMessage(new Message(textFieldInput.getText(), author));
                 textFieldInput.setText("");
+                textFieldInput.requestFocus();
             }
         }
     }

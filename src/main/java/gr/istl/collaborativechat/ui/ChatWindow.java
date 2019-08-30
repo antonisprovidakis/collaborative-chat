@@ -56,7 +56,7 @@ public class ChatWindow extends JFrame {
     }
 
     private void initComponents() {
-        setTitle("Collaborative Chat - User: " + username);
+        setTitle("Collaborative Chat - Username: " + username);
         setSize(400, 400);
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
 
@@ -85,23 +85,14 @@ public class ChatWindow extends JFrame {
         JPanel panelBottom = new JPanel(new BorderLayout());
 
         textFieldInput = new JTextField();
-        textFieldInput.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                sendMessageHandler();
-            }
-        });
+
+        SendMessageHandler sendMessageHandler = new SendMessageHandler(textFieldInput, username);
+        textFieldInput.addActionListener(sendMessageHandler);
 
         panelBottom.add(textFieldInput, BorderLayout.CENTER);
 
         buttonSend = new JButton("Send");
-
-        buttonSend.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                sendMessageHandler();
-            }
-        });
+        buttonSend.addActionListener(sendMessageHandler);
 
         panelBottom.add(buttonSend, BorderLayout.EAST);
         add(scrollPane);
@@ -119,19 +110,24 @@ public class ChatWindow extends JFrame {
         dbRefOnlineUsersCounter.child(username).removeValueAsync();
     }
 
-    public void sendMessage(String username, String message) {
+    public void sendMessage(Message message) {
         DatabaseReference newMessageRef = dbRefMessages.push();
-        newMessageRef.setValueAsync(new Message(message, username));
+        newMessageRef.setValueAsync(message);
     }
 
-    private void appendMessageLocally(String username, String message) {
-        SimpleAttributeSet as = username.equals(this.username) ? localUserAttributeSet : otherUsersAttributeSet;
+    private void appendMessageLocally(Message message) {
+        boolean messageSentByLocalUser = message.getAuthor().equals(this.username);
+
+        SimpleAttributeSet as = messageSentByLocalUser ? localUserAttributeSet : otherUsersAttributeSet;
         StyledDocument doc = textPaneMessages.getStyledDocument();
 
         try {
-            doc.setParagraphAttributes(doc.getLength(), message.length(), as, false);
-            doc.insertString(doc.getLength(), message + "\n", null);
-            doc.insertString(doc.getLength(), "- " + username + emptyLine(), authorAttributeSet);
+            doc.setParagraphAttributes(doc.getLength(), message.getText().length(), as, false);
+            doc.insertString(doc.getLength(), message.getText() + "\n", null);
+
+            String authorAlias = messageSentByLocalUser ? "Me" : message.getAuthor();
+
+            doc.insertString(doc.getLength(), "- " + authorAlias + emptyLine(), authorAttributeSet);
             emptyLine();
 
         } catch (BadLocationException ex) {
@@ -163,10 +159,9 @@ public class ChatWindow extends JFrame {
             @Override
             public void onChildAdded(DataSnapshot data, String prevChildKey) {
                 HashMap<String, String> messageObj = (HashMap<String, String>) data.getValue();
-                String message = messageObj.get("message");
+                String text = messageObj.get("text");
                 String author = messageObj.get("author");
-
-                appendMessageLocally(author, message);
+                appendMessageLocally(new Message(text, author));
             }
 
             @Override
@@ -187,15 +182,7 @@ public class ChatWindow extends JFrame {
         });
     }
 
-    private void sendMessageHandler() {
-        if (textFieldInput.getText().trim().length() > 0) {
-            sendMessage(username, textFieldInput.getText());
-            textFieldInput.setText("");
-        }
-    }
-
     private void updateLabelUsersCounter(int newCounter) {
-
         int oldCounter = Integer.valueOf(labelUsersCounter.getText());
 
         if (oldCounter == newCounter) {
@@ -218,4 +205,22 @@ public class ChatWindow extends JFrame {
         StyleConstants.setBold(authorAttributeSet, true);
     }
 
+    private class SendMessageHandler implements ActionListener {
+
+        private final JTextField textFieldInput;
+        private final String author;
+
+        public SendMessageHandler(JTextField textFieldInput, String author) {
+            this.textFieldInput = textFieldInput;
+            this.author = author;
+        }
+
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            if (textFieldInput.getText().trim().length() > 0) {
+                sendMessage(new Message(textFieldInput.getText(), author));
+                textFieldInput.setText("");
+            }
+        }
+    }
 }

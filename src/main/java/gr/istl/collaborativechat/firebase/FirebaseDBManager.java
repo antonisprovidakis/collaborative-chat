@@ -8,6 +8,7 @@ import com.google.firebase.database.FirebaseDatabase;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.util.Properties;
 
 /**
  *
@@ -15,11 +16,7 @@ import java.io.IOException;
  */
 public class FirebaseDBManager {
 
-    private final static String CREDENTIALS_PATH = "path-to-service-account-credentials-json-file";
-    private final static String DB_URL = "your-firebase-database-url";
-
     private FirebaseDatabase database = null;
-
     private static FirebaseDBManager instance = null;
 
     public FirebaseDBManager() {
@@ -28,18 +25,22 @@ public class FirebaseDBManager {
 
     private void init() {
         try {
-            FileInputStream serviceAccount = new FileInputStream(CREDENTIALS_PATH);
+            Properties props = new Properties();
+            props.loadFromXML(new FileInputStream("settings.xml"));
+            String firebaseCredentialsFilename = props.getProperty("firebase_admin_sdk_service_key_filename");
+            String firebaseDbUrl = props.getProperty("firebase_db_url");
+
+            FileInputStream serviceAccount = new FileInputStream(firebaseCredentialsFilename);
             FirebaseOptions options = new FirebaseOptions.Builder()
-                    .setCredentials(GoogleCredentials.fromStream(serviceAccount)).setDatabaseUrl(DB_URL).build();
+                    .setCredentials(GoogleCredentials.fromStream(serviceAccount))
+                    .setDatabaseUrl(firebaseDbUrl).build();
             FirebaseApp defaultApp = FirebaseApp.initializeApp(options);
             database = FirebaseDatabase.getInstance(defaultApp);
         } catch (FileNotFoundException e) {
-            e.printStackTrace();
-            System.out.println("Credentials File not found.");
+            System.out.println(e.getMessage());
             System.exit(1);
         } catch (IOException e) {
-            e.printStackTrace();
-            System.out.println("IO error.");
+            System.out.println(e.getMessage());
             System.exit(1);
         }
     }
@@ -55,5 +56,4 @@ public class FirebaseDBManager {
     public DatabaseReference getDBRef(String path) {
         return database.getReference(path);
     }
-
 }
